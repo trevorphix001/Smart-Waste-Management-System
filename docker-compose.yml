@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # 1. The Database (Must be named 'waste-db')
+  waste-db:
+    image: mongo
+    container_name: waste-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  # 2. The AI Brain
+  waste-ai:
+    build: ./ai-engine
+    container_name: waste-ai
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ai-engine:/app
+    # Using python -m to ensure the module is found
+    command: python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # 3. The Backend API
+  waste-api:
+    build: ./api-gateway
+    container_name: waste-api
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://waste-db:27017/smartcity
+      - AI_SERVICE_URL=http://waste-ai:8000
+    depends_on:
+      - waste-db
+      - waste-ai
+    volumes:
+      - ./api-gateway:/app
+
+volumes:
+  mongo-data:

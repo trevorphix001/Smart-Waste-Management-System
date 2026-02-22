@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Report Issue | Swachh App</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* APP UI STYLING */
+        body { background: #eef2f6; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
+        
+        .mobile-container { 
+            max-width: 480px; margin: 0 auto; background: white; 
+            min-height: 100vh; position: relative; box-shadow: 0 0 25px rgba(0,0,0,0.1); 
+        }
+
+        /* Header */
+        .app-header { 
+            background: linear-gradient(135deg, #198754, #146c43); color: white; 
+            padding: 25px 20px 30px 20px; border-radius: 0 0 25px 25px; 
+            box-shadow: 0 4px 15px rgba(25, 135, 84, 0.3);
+        }
+
+        .section-title { font-size: 0.85rem; font-weight: 700; color: #6c757d; margin-top: 25px; margin-bottom: 10px; letter-spacing: 0.5px; }
+
+        /* Custom Inputs */
+        .custom-input { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 0.95rem; }
+        .custom-input:focus { border-color: #198754; box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25); }
+
+        /* Evidence Buttons */
+        .evidence-btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-evidence { 
+            flex: 1; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; 
+            padding: 20px 10px; text-align: center; color: #475569; font-weight: 600; cursor: pointer; transition: 0.2s; 
+        }
+        .btn-evidence:active { transform: scale(0.95); background: #e2e8f0; }
+        .btn-evidence i { font-size: 1.8rem; color: #198754; display: block; margin-bottom: 8px; }
+
+        #preview-img { width: 100%; border-radius: 12px; display: none; border: 3px solid #198754; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+
+        /* Loader Overlay */
+        .scan-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            align-items: center; justify-content: center; color: white; z-index: 9999;
+        }
+
+        .btn-submit { background: #198754; border: none; padding: 15px; border-radius: 12px; font-size: 1.1rem; box-shadow: 0 8px 20px rgba(25, 135, 84, 0.4); }
+    </style>
+    
+    <script>
+        // Security Check
+        if (!localStorage.getItem('citizenToken')) { window.location.href = 'citizen_login.html'; }
+    </script>
+</head>
+<body>
+
+<div class="mobile-container pb-4">
+    
+    <div class="app-header">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <a href="index.html" class="text-white opacity-75"><i class="fas fa-chevron-left fa-lg"></i></a>
+            <h5 class="mb-0 fw-bold">Report Incident</h5>
+            <i class="fas fa-user-circle fa-lg opacity-75"></i>
+        </div>
+        <div class="text-center mt-3">
+            <h3 class="fw-bold mb-0">Help Clean the City</h3>
+        </div>
+    </div>
+
+    <div class="px-4">
+        
+        <div class="section-title">1. YOUR DETAILS</div>
+        <input type="text" id="issuerName" class="form-control custom-input mb-2" placeholder="Full Name" required>
+        <input type="tel" id="issuerContact" class="form-control custom-input mb-2" placeholder="Contact Number (10 digits)" required>
+        <textarea id="issuerAddress" class="form-control custom-input" rows="2" placeholder="Your Residential Address"></textarea>
+
+        <div class="section-title">2. UPLOAD EVIDENCE <span class="text-danger">*</span></div>
+        <div class="evidence-btn-group" id="upload-buttons">
+            <div class="btn-evidence" onclick="document.getElementById('cameraInput').click()">
+                <i class="fas fa-camera"></i> Live Camera
+            </div>
+            <div class="btn-evidence" onclick="document.getElementById('galleryInput').click()">
+                <i class="fas fa-images"></i> Gallery Image
+            </div>
+        </div>
+        
+        <input type="file" id="cameraInput" hidden accept="image/*" capture="environment" onchange="previewFile(this)">
+        <input type="file" id="galleryInput" hidden accept="image/*" onchange="previewFile(this)">
+        
+        <div class="text-center mb-3">
+            <img id="preview-img">
+            <button class="btn btn-sm btn-outline-danger mt-2" id="remove-img-btn" style="display: none;" onclick="removeImage()">Remove Photo</button>
+        </div>
+
+        <div class="section-title">3. INCIDENT LOCATION <span class="text-danger">*</span></div>
+        <div class="d-flex align-items-center bg-light p-3 rounded-3 border mb-2">
+            <i class="fas fa-map-marker-alt text-danger me-3 fa-lg"></i>
+            <div class="flex-grow-1">
+                <h6 class="mb-0 fw-bold text-success" id="gps-status">Locating GPS...</h6>
+                <small class="text-muted" id="gps-coords">Fetching coordinates</small>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="initGPS()"><i class="fas fa-sync-alt"></i></button>
+        </div>
+        <input type="text" id="manualLocation" class="form-control custom-input" placeholder="Or type landmark / precise location manually">
+
+        <div class="section-title">4. COMPLAINT DETAILS <span class="text-danger">*</span></div>
+        <select id="wasteCategory" class="form-select custom-input mb-4" required>
+            <option value="" selected disabled>Select Waste Type</option>
+            <option value="Mixed Garbage">🗑️ Mixed Garbage / Dump</option>
+            <option value="Plastic Waste">🥤 Plastic Waste</option>
+            <option value="Organic Waste">🍎 Organic / Food Waste</option>
+            <option value="Construction Debris">🧱 Construction Debris</option>
+            <option value="Dead Animal">🐕 Dead Animal</option>
+            <option value="Drainage/Sewage">💧 Drainage / Sewage Overflow</option>
+            <option value="Other">❓ Other</option>
+        </select>
+
+        <button class="btn btn-success w-100 btn-submit fw-bold text-white mb-4" onclick="submitReport()">
+            <i class="fas fa-paper-plane me-2"></i> SUBMIT COMPLAINT
+        </button>
+        
+    </div>
+</div>
+
+<div class="scan-overlay" id="loading-overlay">
+    <div class="spinner-border text-success mb-3" style="width: 3rem; height: 3rem;"></div>
+    <h4 class="fw-bold text-success">Submitting Report...</h4>
+    <p class="text-light opacity-75">Encrypting data & geo-tags</p>
+</div>
+
+<div class="modal fade" id="successModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center p-4 border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="mb-3">
+                <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                    <i class="fas fa-check fa-3x"></i>
+                </div>
+            </div>
+            <h3 class="fw-bold text-dark">Complaint Filed!</h3>
+            <p class="text-muted mb-4">Thank you for helping keep the city clean.</p>
+            
+            <div class="card bg-light border-0 p-3 text-start mb-3 rounded-3">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small fw-bold">TICKET ID</span>
+                    <span class="text-dark fw-bold" id="modal-ticket">#---</span>
+                </div>
+                <hr class="my-1">
+                <div class="d-flex justify-content-between mt-2">
+                    <span class="text-muted small fw-bold">WASTE TYPE</span>
+                    <span class="badge bg-dark text-white" id="modal-type">---</span>
+                </div>
+            </div>
+            
+            <button class="btn btn-dark w-100 py-3 rounded-3 fw-bold" onclick="location.reload()">Report Another Issue</button>
+            <a href="index.html" class="btn btn-link text-decoration-none mt-3 text-muted">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let userLat = null, userLng = null, base64Image = "";
+
+    // --- 1. INITIALIZE GPS ---
+    function initGPS() {
+        const status = document.getElementById('gps-status');
+        const coords = document.getElementById('gps-coords');
+        
+        status.innerText = "Locating GPS...";
+        status.className = "mb-0 fw-bold text-warning";
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    userLat = pos.coords.latitude; userLng = pos.coords.longitude;
+                    status.innerText = "Live GPS Locked";
+                    status.className = "mb-0 fw-bold text-success";
+                    coords.innerText = `Lat: ${userLat.toFixed(5)}, Lng: ${userLng.toFixed(5)}`;
+                },
+                (err) => {
+                    status.innerText = "GPS Disabled/Failed";
+                    status.className = "mb-0 fw-bold text-danger";
+                    coords.innerText = "Please enter location manually below";
+                }, { enableHighAccuracy: true }
+            );
+        } else {
+            status.innerText = "GPS Not Supported";
+        }
+    }
+    initGPS(); // Call on load
+
+    // --- 2. IMAGE PREVIEW (Handles both Camera & Gallery) ---
+    function previewFile(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                base64Image = reader.result;
+                document.getElementById('preview-img').src = base64Image;
+                document.getElementById('preview-img').style.display = 'block';
+                document.getElementById('upload-buttons').style.display = 'none';
+                document.getElementById('remove-img-btn').style.display = 'inline-block';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeImage() {
+        base64Image = "";
+        document.getElementById('preview-img').style.display = 'none';
+        document.getElementById('upload-buttons').style.display = 'flex';
+        document.getElementById('remove-img-btn').style.display = 'none';
+        document.getElementById('cameraInput').value = "";
+        document.getElementById('galleryInput').value = "";
+    }
+
+    // --- 3. SUBMIT DATA ---
+    async function submitReport() {
+        // Gather Form Data
+        const name = document.getElementById('issuerName').value;
+        const contact = document.getElementById('issuerContact').value;
+        const address = document.getElementById('issuerAddress').value;
+        const manualLoc = document.getElementById('manualLocation').value;
+        const wasteType = document.getElementById('wasteCategory').value;
+
+        // Basic Validation
+        if(!name || !contact) return alert("⚠️ Please provide your Name and Contact Number.");
+        if(!base64Image) return alert("⚠️ Please attach photo evidence via Camera or Gallery.");
+        if(!wasteType) return alert("⚠️ Please select the Waste Type.");
+        if(!userLat && !manualLoc) return alert("⚠️ Please wait for GPS to lock, or type the location manually.");
+
+        document.getElementById('loading-overlay').style.display = 'flex';
+
+        // Prepare Payload
+        const payload = {
+            issuer: { name, contact, address },
+            image: base64Image,
+            lat: userLat,
+            lng: userLng,
+            landmark: manualLoc,
+            wasteType: wasteType
+        };
+
+        try {
+            const res = await fetch('http://localhost:3000/api/reports', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+                if(data.success) {
+                    document.getElementById('modal-ticket').innerText = "#" + data.ticketId;
+                    document.getElementById('modal-type').innerText = wasteType;
+                    new bootstrap.Modal(document.getElementById('successModal')).show();
+                } else {
+                    alert("❌ Server Error: " + data.message);
+                }
+            }, 1500); 
+
+        } catch (e) {
+            document.getElementById('loading-overlay').style.display = 'none';
+            alert("❌ Connection Failed. Make sure the Node.js backend is running.");
+        }
+    }
+</script>
+</body>
+</html>

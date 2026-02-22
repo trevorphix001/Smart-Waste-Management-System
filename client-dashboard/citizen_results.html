@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Dashboard | Swachh City</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { background: #fdfbfb; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
+        
+        /* Swachh Bharat Theme Header */
+        .public-header { 
+            background: linear-gradient(135deg, #198754, #146c43); 
+            color: white; 
+            padding: 40px 20px; 
+            border-radius: 0 0 40px 40px; 
+            box-shadow: 0 10px 30px rgba(25, 135, 84, 0.2);
+            position: relative;
+        }
+        
+        .score-circle {
+            width: 120px; height: 120px;
+            background: white; border-radius: 50%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border: 5px solid #ff9933; /* Saffron */
+            box-shadow: 0 0 20px rgba(255, 153, 51, 0.4);
+            margin: 0 auto;
+        }
+        
+        .stat-card {
+            background: white; border-radius: 15px; padding: 25px 15px; text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05); border-bottom: 4px solid #198754;
+            transition: transform 0.3s;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-icon { font-size: 2.5rem; color: #198754; margin-bottom: 15px; }
+        
+        .recent-ticket {
+            background: white; border-left: 4px solid #ffc107; padding: 15px;
+            border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3 py-2">
+    <a class="navbar-brand fw-bold" href="index.html"><i class="fas fa-city text-success me-2"></i>Smart City Portal</a>
+    <div class="ms-auto d-flex gap-2">
+        <a href="citizen_login.html" class="btn btn-success btn-sm fw-bold"><i class="fas fa-camera me-1"></i> Report Issue</a>
+    </div>
+</nav>
+
+<div class="public-header text-center mb-5">
+    <h2 class="fw-bold mb-1">Guwahati Cleanliness Report</h2>
+    <p class="opacity-75 mb-4">Powered by IoT & Citizen Participation</p>
+    
+    <div class="score-circle">
+        <h2 class="fw-bold text-dark mb-0" id="clean-index">--</h2>
+        <small class="text-success fw-bold">SCORE</small>
+    </div>
+</div>
+
+<div class="container mb-5">
+    
+    <div class="row g-4 mb-5">
+        <div class="col-6 col-md-4">
+            <div class="stat-card">
+                <i class="fas fa-truck-loading stat-icon"></i>
+                <h3 class="fw-bold text-dark mb-0" id="waste-collected">--</h3>
+                <small class="text-muted fw-bold">Tons Collected</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="stat-card" style="border-bottom-color: #004aad;">
+                <i class="fas fa-check-circle stat-icon" style="color: #004aad;"></i>
+                <h3 class="fw-bold text-dark mb-0" id="complaints-resolved">--</h3>
+                <small class="text-muted fw-bold">Issues Resolved</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="stat-card" style="border-bottom-color: #ff9933;">
+                <i class="fas fa-wifi stat-icon" style="color: #ff9933;"></i>
+                <h3 class="fw-bold text-dark mb-0" id="active-zones">--</h3>
+                <small class="text-muted fw-bold">Active Smart Bins</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-7">
+            <div class="card border-0 shadow-sm p-4 rounded-4 h-100">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4"><i class="fas fa-chart-pie text-success me-2"></i> Waste Segregation (This Month)</h5>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="publicChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-5">
+            <div class="card border-0 shadow-sm p-4 rounded-4 h-100">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4"><i class="fas fa-broadcast-tower text-primary me-2"></i> Live Community Reports</h5>
+                <div id="feed-container" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                    <div class="text-center text-muted my-4">
+                        <div class="spinner-border spinner-border-sm text-success mb-2" role="status"></div>
+                        <br>Fetching live updates...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Fetch KPI Data
+    async function loadPublicStats() {
+        try {
+            const res = await fetch('http://localhost:3000/api/stats/public');
+            const data = await res.json();
+            
+            // Animate numbers
+            document.getElementById('clean-index').innerText = data.cleanlinessIndex || "94";
+            document.getElementById('waste-collected').innerText = data.wasteCollected || "1,250";
+            document.getElementById('complaints-resolved').innerText = data.complaintsResolved || "450";
+            document.getElementById('active-zones').innerText = data.activeZones || "0";
+            
+        } catch(e) { console.error("Could not load stats"); }
+    }
+
+    // 2. Fetch Live Ticket Feed
+    async function loadLiveFeed() {
+        const feed = document.getElementById('feed-container');
+        try {
+            const res = await fetch('http://localhost:3000/api/reports');
+            const reports = await res.json();
+            
+            feed.innerHTML = '';
+            
+            if(reports.length === 0) {
+                feed.innerHTML = '<p class="text-center text-muted mt-4">No active reports. City is clean! 🌿</p>';
+                return;
+            }
+
+            // Only show the 5 most recent
+            reports.slice(0, 5).forEach(report => {
+                const landmark = report.location.landmark ? report.location.landmark : "Location shared via GPS";
+                
+                const html = `
+                <div class="recent-ticket">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold text-dark small">Ticket #${report.ticketId}</span>
+                        <span class="badge bg-light text-dark border small">${report.wasteType || 'General'}</span>
+                    </div>
+                    <p class="text-muted small mb-0"><i class="fas fa-map-marker-alt text-danger"></i> ${landmark}</p>
+                    <p class="text-success small fw-bold mt-1 mb-0"><i class="fas fa-spinner fa-spin me-1"></i> Action Initiated</p>
+                </div>`;
+                feed.innerHTML += html;
+            });
+            
+        } catch(e) { feed.innerHTML = '<p class="text-danger small text-center">Failed to load live feed.</p>'; }
+    }
+
+    // 3. Initialize Chart
+    function initChart() {
+        const ctx = document.getElementById('publicChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Recycled Plastic', 'Composted Organic', 'Landfill', 'E-Waste'],
+                datasets: [{
+                    label: 'Tons Processed',
+                    data: [320, 540, 210, 85],
+                    backgroundColor: ['#ffc107', '#198754', '#6c757d', '#0dcaf0'],
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    // Run on load
+    loadPublicStats();
+    loadLiveFeed();
+    initChart();
+</script>
+</body>
+</html>

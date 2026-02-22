@@ -1,0 +1,37 @@
+:root {
+    --bg-dark: #0f172a;
+    --glass: rgba(30, 41, 59, 0.7);
+    --primary: #3b82f6;
+    --accent: #10b981;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: #e2e8f0;
+    font-family: 'Inter', sans-serif;
+}
+
+.glass-panel {
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.map-container {
+    height: 600px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.status-critical { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+.status-active { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }

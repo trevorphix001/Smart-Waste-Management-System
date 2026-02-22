@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citizen Login | Swachh Bharat</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            font-family: 'Roboto', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: white;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border-top: 5px solid #198754;
+        }
+        .header { text-align: center; padding: 30px 20px 10px; }
+        .btn-digi {
+            background: white; border: 2px solid #004aad; color: #004aad;
+            width: 100%; padding: 12px; border-radius: 8px; font-weight: 600;
+            display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s;
+        }
+        .btn-digi:hover { background: #f0f8ff; }
+        .divider {
+            display: flex; align-items: center; text-align: center; color: #aaa; margin: 20px 0; font-size: 0.85rem;
+        }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #eee; }
+        .divider::before { margin-right: 10px; }
+        .divider::after { margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <div class="header">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" height="50" class="mb-3">
+        <h4 class="fw-bold text-success">Citizen Portal</h4>
+        <p class="text-muted small">Join the Jan Andolan for a cleaner city</p>
+    </div>
+
+    <div class="p-4">
+        <button class="btn-digi mb-2" onclick="alert('Redirecting to DigiLocker OAuth...')">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/DigiLocker_logo.png/640px-DigiLocker_logo.png" height="20">
+            Login with DigiLocker
+        </button>
+        <div class="text-center"><small class="text-success" style="font-size:0.75rem">Recommended for Instant Verification</small></div>
+
+        <div class="divider">OR USE MOBILE NUMBER</div>
+
+        <form onsubmit="handleLogin(event)">
+            <div class="mb-3">
+                <input type="text" id="mobile" class="form-control" placeholder="Mobile Number" required>
+            </div>
+            <div class="mb-3">
+                <input type="password" id="password" class="form-control" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn btn-dark w-100 py-2">Log In</button>
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="citizen_register.html" class="text-decoration-none small text-muted">First time user? <strong>Register Manually</strong></a>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function handleLogin(e) {
+        e.preventDefault();
+        const payload = {
+            mobile: document.getElementById('mobile').value,
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const res = await fetch('http://localhost:3000/api/citizen/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if(data.success) {
+                localStorage.setItem('citizenToken', 'valid');
+                window.location.href = 'report.html';
+            } else {
+                alert("❌ " + data.message);
+            }
+        } catch(err) { alert("Server Error"); }
+    }
+</script>
+</body>
+</html>

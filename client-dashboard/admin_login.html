@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Login | Municipal Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f3f4f6; font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .card { width: 100%; max-width: 400px; border: none; border-top: 5px solid #004aad; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .btn-gov { background: #004aad; color: white; width: 100%; padding: 10px; font-weight: 600; }
+        .btn-gov:hover { background: #003380; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="card p-4">
+    <div class="text-center mb-4">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg" height="50" class="mb-3">
+        <h5 class="fw-bold text-dark">Municipal Admin Portal</h5>
+        <p class="text-muted small">Authorized Personnel Only</p>
+    </div>
+
+    <form onsubmit="loginAdmin(event)">
+        <div class="mb-3">
+            <label class="form-label small fw-bold text-muted">USERNAME</label>
+            <input type="text" id="username" class="form-control" placeholder="admin" required>
+        </div>
+        <div class="mb-4">
+            <label class="form-label small fw-bold text-muted">PASSWORD</label>
+            <input type="password" id="password" class="form-control" placeholder="••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-gov mb-3">SECURE LOGIN</button>
+    </form>
+    
+    <div class="text-center">
+        <a href="admin_register.html" class="small text-muted text-decoration-none">Register New Admin</a>
+    </div>
+</div>
+
+<script>
+    async function loginAdmin(e) {
+        e.preventDefault();
+        const payload = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const res = await fetch('http://localhost:3000/api/auth/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                localStorage.setItem('adminToken', data.token);
+                
+                // FIXED: Redirects to admin_reports.html instead of admin.html
+                window.location.href = 'admin_reports.html';
+                
+            } else {
+                alert("❌ Access Denied: " + data.message);
+            }
+        } catch (e) { alert("Connection Error"); }
+    }
+</script>
+</body>
+</html>

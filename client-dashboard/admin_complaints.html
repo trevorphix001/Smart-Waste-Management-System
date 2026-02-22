@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Analytics | Smart City Admin</title>
+
+   
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+   
+
+    <script>
+
+        // Security Check: Redirect to Login if not authenticated
+
+        if (!localStorage.getItem('adminToken')) {
+
+            window.location.href = 'admin_login.html';
+
+        }
+
+    </script>
+
+
+
+    <style>
+
+        body { background: #f3f4f6; font-family: 'Segoe UI', sans-serif; margin: 0; }
+
+        .sidebar { width: 250px; height: 100vh; background: white; position: fixed; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; z-index: 1000; }
+
+        .main-content { margin-left: 250px; padding: 30px; }
+
+        .kpi-card { background: white; padding: 20px; border-radius: 8px; border-left: 5px solid #004aad; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+
+
+        /* MOBILE RESPONSIVE FIXES FOR ADMIN SIDEBAR */
+
+        @media (max-width: 768px) {
+
+            .sidebar {
+
+                width: 100%;
+
+                height: auto;
+
+                position: relative;
+
+                border-right: none;
+
+                border-bottom: 3px solid #004aad;
+
+                padding-bottom: 10px;
+
+            }
+
+            .sidebar .nav { flex-direction: row; flex-wrap: wrap; gap: 5px !important; }
+
+            .sidebar .nav-item { flex: 1; text-align: center; font-size: 0.85rem; }
+
+            .sidebar hr { display: none; }
+
+            .main-content {
+
+                margin-left: 0;
+
+                padding: 15px;
+
+            }
+
+            .card-header h5, .card-header h3 { font-size: 1.2rem; }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+<div class="sidebar">
+
+    <h5 class="fw-bold text-primary mb-5">Admin Console</h5>
+
+   
+
+    <ul class="nav flex-column gap-3">
+
+        <li class="nav-item">
+
+            <a href="index.html" class="nav-link text-dark"><i class="fas fa-map-marked-alt me-2"></i> Live Map</a>
+
+        </li>
+
+        <li class="nav-item">
+
+            <a href="admin_complaints.html" class="nav-link text-dark"><i class="fas fa-clipboard-list me-2"></i> Citizen Complaints</a>
+
+        </li>
+
+        <li class="nav-item">
+
+            <a href="admin_reports.html" class="nav-link active fw-bold bg-light rounded text-primary"><i class="fas fa-chart-line me-2"></i> Analytics Report</a>
+
+        </li>
+
+    </ul>
+
+   
+
+    <hr class="my-4">
+
+   
+
+    <div class="alert alert-info small mb-4">
+
+        <strong>System Status:</strong><br>
+
+        ✅ Azure IoT Hub: Online<br>
+
+        ✅ AI Prediction: Active
+
+    </div>
+
+
+
+    <button onclick="logout()" class="btn btn-outline-danger w-100 fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Logout</button>
+
+</div>
+
+
+
+<div class="main-content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <h3 class="fw-bold">Monthly Operational Report</h3>
+
+        <button class="btn btn-dark fw-bold" onclick="downloadPDF()"><i class="fas fa-download me-2"></i> Download PDF</button>
+
+    </div>
+
+
+
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+
+            <div class="kpi-card" style="border-color: #28a745;">
+
+                <small class="text-muted fw-bold">FUEL SAVED (Liters)</small>
+
+                <h2 class="fw-bold text-success mt-2" id="fuel">--</h2>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="kpi-card" style="border-color: #ffc107;">
+
+                <small class="text-muted fw-bold">CO2 REDUCED (Kg)</small>
+
+                <h2 class="fw-bold text-warning mt-2" id="co2">--</h2>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="kpi-card" style="border-color: #dc3545;">
+
+                <small class="text-muted fw-bold">AVG RESPONSE TIME</small>
+
+                <h2 class="fw-bold text-danger mt-2" id="time">--</h2>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="kpi-card">
+
+                <small class="text-muted fw-bold">FLEET EFFICIENCY</small>
+
+                <h2 class="fw-bold text-primary mt-2" id="eff">--</h2>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="row mb-4">
+
+        <div class="col-md-6">
+
+            <div class="card p-4 border-0 shadow-sm h-100 rounded-3">
+
+                <h6 class="fw-bold mb-3 text-secondary">Cost vs. Savings Analysis</h6>
+
+                <canvas id="costChart"></canvas>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-6">
+
+            <div class="card p-4 border-0 shadow-sm h-100 rounded-3">
+
+                <h6 class="fw-bold mb-3 text-secondary">Waste Composition</h6>
+
+                <div style="height: 250px; display: flex; justify-content: center;">
+
+                    <canvas id="wasteChart"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="row mt-4">
+
+        <div class="col-md-12">
+
+            <div class="card p-4 border-0 shadow-sm rounded-3" style="background: linear-gradient(to right, #ffffff, #f0f7ff);">
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+
+                    <h5 class="fw-bold text-primary mb-0"><i class="fas fa-brain me-2"></i> AI Predictive Insights (Azure ML)</h5>
+
+                    <span class="badge bg-primary">Model Accuracy: 92%</span>
+
+                </div>
+
+               
+
+                <div class="row align-items-center">
+
+                    <div class="col-md-8">
+
+                        <canvas id="predictionChart" style="height: 250px;"></canvas>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <div class="alert alert-warning border-0 shadow-sm mb-3">
+
+                            <h6 class="fw-bold"><i class="fas fa-exclamation-triangle me-2"></i> High-Risk Prediction</h6>
+
+                            <p class="small mb-0">Based on historical patterns, <strong>Fancy Bazar (GHY-C01)</strong> is predicted to reach 100% capacity within <strong>45 minutes</strong>.</p>
+
+                        </div>
+
+                        <div class="alert alert-success border-0 shadow-sm">
+
+                            <h6 class="fw-bold"><i class="fas fa-lightbulb me-2"></i> Optimization Tip</h6>
+
+                            <p class="small mb-0">Reroute Truck #04 from Zoo Road to GS Road now to prevent overflow in 3 critical points.</p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+    // --- Authentication ---
+
+    function logout() {
+
+        localStorage.removeItem('adminToken');
+
+        window.location.href = 'admin_login.html';
+
+    }
+
+
+
+    // --- 1. Fetch Basic Data (Admin Stats) ---
+
+    async function loadAdminStats() {
+
+        try {
+
+            const res = await fetch('http://localhost:3000/api/stats/admin');
+
+            const data = await res.json();
+
+           
+
+            document.getElementById('fuel').innerText = data.fuelSaved || "2450";
+
+            document.getElementById('co2').innerText = data.co2Reduced || "5600";
+
+            document.getElementById('time').innerText = data.avgResponseTime || "2.4 hrs";
+
+            document.getElementById('eff').innerText = data.efficiency || "89%";
+
+
+
+            // Render Cost Chart
+
+            new Chart(document.getElementById('costChart'), {
+
+                type: 'bar',
+
+                data: {
+
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+
+                    datasets: [
+
+                        { label: 'Operational Cost (₹)', data: [50000, 48000, 46000, 42000], backgroundColor: '#dc3545', borderRadius: 4 },
+
+                        { label: 'Fuel Savings (₹)', data: [12000, 15000, 18000, 24000], backgroundColor: '#28a745', borderRadius: 4 }
+
+                    ]
+
+                },
+
+                options: { responsive: true }
+
+            });
+
+
+
+            // Render Waste Chart
+
+            new Chart(document.getElementById('wasteChart'), {
+
+                type: 'doughnut',
+
+                data: {
+
+                    labels: ['Plastic', 'Organic', 'Metal', 'Paper'],
+
+                    datasets: [{ data: [35, 45, 10, 10], backgroundColor: ['#ffc107', '#28a745', '#6c757d', '#17a2b8'] }]
+
+                },
+
+                options: { maintainAspectRatio: false }
+
+            });
+
+
+
+        } catch (e) {
+
+            console.error("Backend offline, using fallback data.");
+
+        }
+
+    }
+
+
+
+    // --- 2. Initialize Azure Predictive Chart ---
+
+    function initPredictionChart() {
+
+        const ctx = document.getElementById('predictionChart').getContext('2d');
+
+       
+
+        const labels = ['4pm', '5pm', '6pm', '7pm', '8pm (Now)', '9pm', '10pm', '11pm'];
+
+        const historicalData = [45, 52, 60, 75, 82, null, null, null];
+
+        const predictedData = [null, null, null, null, 82, 89, 95, 98];
+
+
+
+        new Chart(ctx, {
+
+            type: 'line',
+
+            data: {
+
+                labels: labels,
+
+                datasets: [
+
+                    {
+
+                        label: 'Actual Fill Level',
+
+                        data: historicalData,
+
+                        borderColor: '#004aad',
+
+                        backgroundColor: 'rgba(0, 74, 173, 0.1)',
+
+                        borderWidth: 3,
+
+                        pointRadius: 5,
+
+                        fill: true,
+
+                        tension: 0.4
+
+                    },
+
+                    {
+
+                        label: 'AI Predicted Level (Azure ML)',
+
+                        data: predictedData,
+
+                        borderColor: '#ff9933',
+
+                        borderDash: [5, 5],
+
+                        backgroundColor: 'transparent',
+
+                        borderWidth: 3,
+
+                        tension: 0.4
+
+                    }
+
+                ]
+
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                plugins: {
+
+                    legend: { position: 'top' },
+
+                    tooltip: {
+
+                        callbacks: {
+
+                            label: function(context) {
+
+                                return context.dataset.label + ': ' + context.parsed.y + '%';
+
+                            }
+
+                        }
+
+                    }
+
+                },
+
+                scales: {
+
+                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Bin Capacity (%)', font: { weight: 'bold' } } }
+
+                }
+
+            }
+
+        });
+
+    }
+
+
+
+    // --- 3. Mock Download Function ---
+
+    function downloadPDF() {
+
+        alert("📄 Generating Report via Azure Functions...\n\n'Smart_City_Analytics.pdf' has been successfully downloaded.");
+
+    }
+
+
+
+    // Load everything on startup
+
+    loadAdminStats();
+
+    initPredictionChart();
+
+</script>
+
+</body>
+
+</html>
+
+
+
+admin_reports.html
+
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Grievance Redressal | Admin Portal</title>
+
+   
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+   
+
+    <script>
+
+        if (!localStorage.getItem('adminToken')) { window.location.href = 'admin_login.html'; }
+
+    </script>
+
+
+
+    <style>
+
+        body { background: #f3f4f6; font-family: 'Segoe UI', sans-serif; margin: 0; }
+
+       
+
+        /* Sidebar Styling */
+
+        .sidebar { width: 250px; height: 100vh; background: white; position: fixed; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; z-index: 1000; }
+
+        .main-content { margin-left: 250px; padding: 30px; }
+
+       
+
+        /* Table Styling */
+
+        .ticket-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.2s; border: 2px solid #e2e8f0; }
+
+        .ticket-img:hover { transform: scale(2.5); z-index: 100; position: relative; box-shadow: 0 10px 20px rgba(0,0,0,0.2); border-color: #004aad; }
+
+        .table-hover tbody tr:hover { background-color: #f8fafc; }
+
+        .description-box { max-width: 250px; font-size: 0.85rem; color: #475569; white-space: pre-wrap; }
+
+
+
+        /* MOBILE RESPONSIVE FIXES FOR ADMIN SIDEBAR */
+
+        @media (max-width: 768px) {
+
+            .sidebar {
+
+                width: 100%;
+
+                height: auto;
+
+                position: relative;
+
+                border-right: none;
+
+                border-bottom: 3px solid #004aad;
+
+                padding-bottom: 10px;
+
+            }
+
+            .sidebar .nav { flex-direction: row; flex-wrap: wrap; gap: 5px !important; }
+
+            .sidebar .nav-item { flex: 1; text-align: center; font-size: 0.85rem; }
+
+            .sidebar hr { display: none; }
+
+            .main-content {
+
+                margin-left: 0;
+
+                padding: 15px;
+
+            }
+
+            .card-header h5, .card-header h3 { font-size: 1.2rem; }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+<div class="sidebar">
+
+    <h5 class="fw-bold text-primary mb-5">Admin Console</h5>
+
+    <ul class="nav flex-column gap-3">
+
+        <li class="nav-item">
+
+            <a href="index.html" class="nav-link text-dark"><i class="fas fa-map-marked-alt me-2"></i> Live Map</a>
+
+        </li>
+
+        <li class="nav-item">
+
+            <a href="admin_complaints.html" class="nav-link active fw-bold bg-light rounded text-primary"><i class="fas fa-clipboard-list me-2"></i> Citizen Complaints</a>
+
+        </li>
+
+        <li class="nav-item">
+
+            <a href="admin_reports.html" class="nav-link text-dark"><i class="fas fa-chart-line me-2"></i> Analytics Report</a>
+
+        </li>
+
+    </ul>
+
+   
+
+    <hr class="my-5">
+
+    <button onclick="logout()" class="btn btn-outline-danger w-100 fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Logout</button>
+
+</div>
+
+
+
+<div class="main-content">
+
+   
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <h3 class="fw-bold">Grievance Redressal Queue</h3>
+
+        <button class="btn btn-success" onclick="loadReports()"><i class="fas fa-sync-alt me-2"></i>Refresh Feed</button>
+
+    </div>
+
+
+
+    <div class="card shadow-sm border-0 rounded-3">
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle mb-0">
+
+                    <thead class="table-light text-muted small fw-bold">
+
+                        <tr>
+
+                            <th class="ps-4 py-3">EVIDENCE</th>
+
+                            <th>TICKET ID & ISSUER</th>
+
+                            <th>ISSUE CATEGORY</th>
+
+                            <th>LOCATION DETAILS</th>
+
+                            <th>CITIZEN COMMENTS</th>
+
+                            <th class="text-center">ACTION</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="report-table">
+
+                        <tr><td colspan="6" class="text-center py-5">
+
+                            <div class="spinner-border text-primary" role="status"></div>
+
+                        </td></tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+    function logout() {
+
+        localStorage.removeItem('adminToken');
+
+        window.location.href = 'admin_login.html';
+
+    }
+
+
+
+    async function loadReports() {
+
+        const table = document.getElementById('report-table');
+
+        try {
+
+            const res = await fetch('http://localhost:3000/api/reports');
+
+            const allReports = await res.json();
+
+           
+
+            // Only show pending reports in the queue!
+
+            const activeReports = allReports.filter(r => r.status !== 'Resolved');
+
+
+
+            if(activeReports.length === 0) {
+
+                table.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-success fw-bold"><i class="fas fa-check-circle fa-2x mb-2"></i><br>All Caught Up! No pending complaints.</td></tr>';
+
+                return;
+
+            }
+
+
+
+            table.innerHTML = '';
+
+           
+
+            activeReports.forEach(report => {
+
+                let sevColor = 'bg-secondary';
+
+                if(report.severity === 'Critical') sevColor = 'bg-danger';
+
+                if(report.severity === 'High') sevColor = 'bg-warning text-dark';
+
+                if(report.severity === 'Medium') sevColor = 'bg-info text-dark';
+
+
+
+                const issuerName = report.issuer && report.issuer.name ? report.issuer.name : "Anonymous Citizen";
+
+                const issuerContact = report.issuer && report.issuer.contact ? report.issuer.contact : "No Contact";
+
+               
+
+                const landmark = report.location && report.location.landmark ? report.location.landmark : "No landmark provided";
+
+                const desc = report.description ? report.description : "No description provided.";
+
+                const type = report.wasteType ? report.wasteType : "Uncategorized Issue";
+
+
+
+                const row = `
+
+                    <tr>
+
+                        <td class="ps-4">
+
+                            <img src="${report.photo}" class="ticket-img" title="Hover to Enlarge">
+
+                        </td>
+
+                        <td>
+
+                            <div class="fw-bold text-primary">#${report.ticketId}</div>
+
+                            <small class="text-muted"><i class="far fa-clock"></i> ${new Date(report.timestamp).toLocaleString()}</small><br>
+
+                            <span class="badge bg-light text-dark border mt-1"><i class="fas fa-user text-success"></i> ${issuerName}</span>
+
+                            <div class="small text-muted mt-1"><i class="fas fa-phone-alt"></i> ${issuerContact}</div>
+
+                        </td>
+
+                        <td>
+
+                            <div class="fw-bold text-dark">${type}</div>
+
+                            <span class="badge ${sevColor} rounded-pill mt-1">${report.severity || 'Medium'}</span>
+
+                        </td>
+
+                        <td>
+
+                            <div class="fw-bold small text-dark"><i class="fas fa-map-marker-alt text-danger"></i> ${landmark}</div>
+
+                            <small class="text-muted" style="font-size: 0.75rem;">Lat: ${report.location.lat?.toFixed(4)}, Lng: ${report.location.lng?.toFixed(4)}</small>
+
+                        </td>
+
+                        <td>
+
+                            <div class="description-box bg-light p-2 rounded border border-light">
+
+                                <i class="fas fa-quote-left text-muted small mb-1"></i><br>${desc}
+
+                            </div>
+
+                        </td>
+
+                        <td class="text-center">
+
+                            <button class="btn btn-success btn-sm fw-bold shadow-sm" onclick="resolveTicket('${report._id}', this)">
+
+                                <i class="fas fa-check me-1"></i> Resolve
+
+                            </button>
+
+                        </td>
+
+                    </tr>`;
+
+                table.innerHTML += row;
+
+            });
+
+        } catch (e) {
+
+            table.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-danger fw-bold">❌ Error connecting to database. Is Node.js running?</td></tr>';
+
+        }
+
+    }
+
+
+
+    async function resolveTicket(id, btn) {
+
+        if(confirm("Mark issue as RESOLVED? It will remain on the Live Map as a Violet dot.")) {
+
+            btn.disabled = true;
+
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Closing...';
+
+
+
+            try {
+
+                // PUT request to change status to Resolved
+
+                await fetch(`http://localhost:3000/api/reports/${id}/resolve`, { method: 'PUT' });
+
+                const row = btn.closest('tr');
+
+                row.style.transition = 'all 0.5s ease';
+
+                row.style.background = '#d1e7dd'; // Flash green
+
+                row.style.opacity = '0';
+
+               
+
+                setTimeout(() => {
+
+                    row.remove();
+
+                    if(document.getElementById('report-table').children.length === 0) loadReports();
+
+                }, 500);
+
+            } catch(e) {
+
+                alert("❌ Failed to resolve ticket.");
+
+                btn.disabled = false;
+
+                btn.innerHTML = '<i class="fas fa-check me-1"></i> Resolve';
+
+            }
+
+        }
+
+    }
+
+
+
+    loadReports();
+
+</script>
+
+</body>
+
+</html>
